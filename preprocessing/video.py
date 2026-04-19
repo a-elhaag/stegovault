@@ -94,4 +94,5 @@ def reconstruct_video(
         plugin="pyav",
         codec="libx264",
         fps=int(fps),
+        out_pixel_format="yuv444p",
     )
