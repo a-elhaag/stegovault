@@ -1,0 +1,6 @@
+numpy
+opencv-python
+streamlit
+matplotlib
+imageio[ffmpeg]
+pytest
