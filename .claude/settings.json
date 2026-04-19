@@ -3,7 +3,9 @@
     "allow": [
       "mcp__code-review-graph__list_graph_stats_tool",
       "mcp__code-review-graph__build_or_update_graph_tool",
-      "Bash(git -C /Users/anas/Projects/stegovault log --oneline -20)"
+      "Bash(git -C /Users/anas/Projects/stegovault log --oneline -20)",
+      "Bash(python3 -c ' *)",
+      "Bash(python3 -m pytest tests/test_spread.py tests/test_crypto.py tests/test_lsb.py tests/test_capacity.py -v)"
     ]
   }
 }
