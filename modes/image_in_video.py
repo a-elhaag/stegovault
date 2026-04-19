@@ -91,7 +91,8 @@ def embed(cover_path: str, secret_path: str, key: str, b: int) -> tuple[str, dic
 
     cover_stack = np.stack(cover_frames, axis=0)
     stego_stack = lsb.embed(cover_stack, encrypted, b, seed)
-    stego_frames = [np.ascontiguousarray(frame) for frame in stego_stack]
+    # lsb.embed() returns C-contiguous array; convert to list for imageio
+    stego_frames = list(stego_stack)
 
     with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
         stego_path = tmp.name

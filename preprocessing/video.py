@@ -84,13 +84,11 @@ def reconstruct_video(
             f"(expected (H, W, 3) uint8)"
         )
 
-    # Stack frames into single array for imwrite. Peak memory = 2× single frame
-    # for the stack operation, acceptable since write-only (not read concurrently).
-    frame_array = np.stack(frames, axis=0)
-
+    # Pass frame list directly to imwrite. imageio.v3 auto-detects list of frames
+    # and streams to encoder without full stacking. Peak memory = O(1) frame buffer.
     iio.imwrite(
         output_path,
-        frame_array,
+        frames,
         plugin="pyav",
         codec="libx264",
         fps=int(fps),

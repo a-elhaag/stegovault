@@ -8,7 +8,6 @@ import streamlit as st
 
 def offer(file_path: str, label: str, mime: str) -> None:
     """Render st.download_button for file_path. Cleans up temp file after download."""
-    raise NotImplementedError
     if not os.path.exists(file_path):
         return
 
