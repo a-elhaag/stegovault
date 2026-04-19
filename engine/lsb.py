@@ -1,8 +1,8 @@
-"""Vectorized LSB embed / decode over a shuffled pixel order."""
-
 from __future__ import annotations
 
 import numpy as np
+
+from engine.spread import get_pixel_order
 
 
 def embed(cover: np.ndarray, secret_bytes: bytes, b: int, seed: int) -> np.ndarray:
@@ -26,7 +26,6 @@ def embed(cover: np.ndarray, secret_bytes: bytes, b: int, seed: int) -> np.ndarr
     ).reshape(n_chunks)
 
     # Get shuffled pixel slot indices
-    from engine.spread import get_pixel_order  # avoid circular at module level
     order = get_pixel_order(seed, flat.size)[:n_chunks]
 
     # Clear bottom b LSBs of selected slots, then write new values
@@ -43,7 +42,6 @@ def decode(stego: np.ndarray, b: int, seed: int, secret_len: int) -> bytes:
     flat = stego.reshape(-1)
     n_chunks = secret_len * 8 // b
 
-    from engine.spread import get_pixel_order
     order = get_pixel_order(seed, flat.size)[:n_chunks]
 
     # Extract bottom b LSBs

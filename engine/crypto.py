@@ -12,5 +12,5 @@ def xor_bytes(data: bytes, seed: int) -> bytes:
     (decode) so embedded bits carry no plaintext pattern.
     """
     rng = np.random.default_rng(seed)
-    keystream = rng.integers(0, 256, size=len(data), dtype=np.uint8)
-    return bytes(np.frombuffer(data, dtype=np.uint8) ^ keystream)
+    keystream = np.frombuffer(rng.bytes(len(data)), dtype=np.uint8)
+    return (np.frombuffer(data, dtype=np.uint8) ^ keystream).tobytes()
