@@ -13,7 +13,7 @@ def key_to_seed(key: str) -> int:
     md5(key) mod 2**31 as mandated by README.
     Same key -> same seed -> same pixel order and XOR keystream on both sides.
     """
-    raise NotImplementedError
+    return int(hashlib.md5(key.encode()).hexdigest(), 16) % (2**31)
 
 
 def get_pixel_order(seed: int, total_slots: int) -> np.ndarray:
@@ -22,4 +22,4 @@ def get_pixel_order(seed: int, total_slots: int) -> np.ndarray:
     Uses np.random.default_rng(seed).permutation.
     total_slots = H * W * C * frame_count for the cover.
     """
-    raise NotImplementedError
+    return np.random.default_rng(seed).permutation(total_slots)

@@ -19,4 +19,11 @@ def check_capacity(
     cover_shape: shape of one frame, e.g. (H, W, 3).
     Raises CapacityError with human-readable message on failure.
     """
-    raise NotImplementedError
+    H, W, C = cover_shape[:3]
+    capacity_bytes = int(W * H * C * frame_count * b / 8)
+    if capacity_bytes < secret_size:
+        raise CapacityError(
+            f"Secret ({secret_size:,} bytes) exceeds cover capacity "
+            f"({capacity_bytes:,} bytes) at b={b}, frames={frame_count}. "
+            f"Reduce secret size, increase b, or use a larger cover."
+        )
