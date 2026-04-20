@@ -2,23 +2,59 @@
 
 from __future__ import annotations
 
+import cv2
 import numpy as np
 
-
 def load_image(path: str) -> np.ndarray:
-    """Load PNG via cv2.imread. Returns (H, W, 3) uint8 BGR array."""
-    raise NotImplementedError
+    """Load an image from a file path using cv2.
 
+    Args:
+        path: File path to the image.
 
-def serialize_image(img: np.ndarray) -> tuple[bytes, dict]:
-    """Flatten img to raw bytes.
+    Returns:
+        np.ndarray: Image array in BGR format with shape (H, W, C) and dtype uint8.
 
-    Returns (data_bytes, meta) where meta = {'shape': list, 'dtype': str}.
-    Caller writes meta to the JSON sidecar so decode can reconstruct shape.
+    Raises:
+        ValueError: If the image could not be loaded.
     """
-    raise NotImplementedError
+    img = cv2.imread(path)
+    if img is None:
+        raise ValueError(f"Could not load image from {path}")
+    return img
 
 
-def deserialize_image(data: bytes, meta: dict) -> np.ndarray:
-    """Reconstruct ndarray from raw bytes + meta dict. Inverse of serialize_image."""
-    raise NotImplementedError
+def serialize_image(img: np.ndarray) -> bytes:
+    """Convert a numpy image array into raw PNG bytes.
+
+    Args:
+        img: numpy array representing an image.
+
+    Returns:
+        bytes: PNG-encoded image data.
+
+    Raises:
+        ValueError: If encoding fails.
+    """
+    success, encoded = cv2.imencode('.png', img)
+    if not success:
+        raise ValueError("Failed to encode image as PNG")
+    return encoded.tobytes()
+
+
+def deserialize_image(data: bytes) -> np.ndarray:
+    """Convert raw PNG bytes back into a numpy image array.
+
+    Args:
+        data: PNG-encoded image bytes.
+
+    Returns:
+        np.ndarray: Image array in BGR format with shape (H, W, C) and dtype uint8.
+
+    Raises:
+        ValueError: If decoding fails.
+    """
+    img_array = np.frombuffer(data, dtype=np.uint8)
+    img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+    if img is None:
+        raise ValueError("Failed to decode PNG data")
+    return img
