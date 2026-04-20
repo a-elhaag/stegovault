@@ -41,11 +41,14 @@ def serialize_image(img: np.ndarray) -> bytes:
     return encoded.tobytes()
 
 
-def deserialize_image(data: bytes) -> np.ndarray:
+def deserialize_image(data: bytes, metadata: dict | None = None) -> np.ndarray:
     """Convert raw PNG bytes back into a numpy image array.
 
     Args:
         data: PNG-encoded image bytes.
+        metadata: Optional dict with keys 'shape' and 'dtype' (unused; for API consistency).
+                  PNG format carries shape/dtype in header; this param allows fallback patterns
+                  in callers (e.g., image_in_video.py) to pass metadata without error.
 
     Returns:
         np.ndarray: Image array in BGR format with shape (H, W, C) and dtype uint8.
