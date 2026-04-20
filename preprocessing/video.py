@@ -125,8 +125,10 @@ def extract_frame_stack(video_path: str) -> tuple[np.ndarray, float]:
     return frame_stack, fps
 
 
+import collections.abc
+
 def reconstruct_video(
-    frames: list[np.ndarray] | np.ndarray,
+    frames: collections.abc.Iterable[np.ndarray] | np.ndarray | list[np.ndarray],
     output_path: str,
     fps: float,
 ) -> None:
@@ -143,35 +145,69 @@ def reconstruct_video(
           crf is numeric (default 0, meaning lossless). Preset is auto-handled.
 
     Args:
-        frames: list of (H, W, 3) uint8 RGB arrays.
+        frames: Iterable or array of (H, W, 3) uint8 RGB arrays.
         output_path: destination file path (extension preserved for metadata).
         fps: frames per second.
 
     Raises:
         ValueError: if frames list empty or frame has wrong shape/dtype.
     """
-    if isinstance(frames, np.ndarray):
-        if frames.ndim != 4 or frames.shape[0] == 0:
-            raise ValueError("no frames to write")
-        first = frames[0]
-    else:
-        if not frames:
-            raise ValueError("no frames to write")
-        first = frames[0]
+    has_frames = False
+    
+    with iio.imopen(output_path, "w", plugin="pyav") as writer:
+        for idx, frame in enumerate(frames):
+            has_frames = True
+            
+            if frame.dtype != np.uint8 or frame.ndim != 3 or frame.shape[2] != 3:
+                raise ValueError(
+                    f"unexpected frame shape/dtype at idx {idx}: {frame.shape}/{frame.dtype} "
+                    f"(expected (H, W, 3) uint8)"
+                )
 
-    if first.dtype != np.uint8 or first.ndim != 3 or first.shape[2] != 3:
-        raise ValueError(
-            f"unexpected frame shape/dtype: {first.shape}/{first.dtype} "
-            f"(expected (H, W, 3) uint8)"
-        )
+            # Write incrementally using stream API to minimize peaked memory
+            writer.write(
+                frame,
+                is_batch=False,
+                codec="libx264",
+                fps=int(fps),
+                out_pixel_format="yuv444p",
+            )
+            
+    if not has_frames:
+        raise ValueError("no frames to write")
 
-    # Pass frame list directly to imwrite. imageio.v3 auto-detects list of frames
-    # and streams to encoder without full stacking. Peak memory = O(1) frame buffer.
-    iio.imwrite(
-        output_path,
-        frames,
-        plugin="pyav",
-        codec="libx264",
-        fps=int(fps),
-        out_pixel_format="yuv444p",
-    )
+def extract_partial_frame_stack(video_path: str, num_frames: int) -> tuple[np.ndarray, float]:
+    """Return (frame_stack, fps) of exactly num_frames from the start.
+
+    Only decodes the required frames, returning an early stack.
+    Shape is (num_frames, H, W, 3) uint8.
+    """
+    first_frame, fps, frame_count = probe_video(video_path)
+
+    if num_frames > frame_count:
+        num_frames = frame_count
+    
+    if num_frames <= 0:
+        raise ValueError("num_frames must be > 0")
+
+    h, w, c = first_frame.shape
+    frame_stack = np.empty((num_frames, h, w, c), dtype=np.uint8)
+
+    idx = 0
+    for frame in iio.imiter(video_path, plugin="pyav"):
+        if frame.dtype != np.uint8 or frame.ndim != 3 or frame.shape[2] != 3:
+            raise ValueError(
+                f"unexpected frame shape/dtype: {frame.shape}/{frame.dtype} "
+                f"(expected (H, W, 3) uint8)"
+            )
+        if frame.shape != (h, w, c):
+            raise ValueError(
+                f"inconsistent frame shape: {frame.shape} (expected {(h, w, c)})"
+            )
+        
+        frame_stack[idx] = frame
+        idx += 1
+        if idx >= num_frames:
+            break
+
+    return frame_stack, fps

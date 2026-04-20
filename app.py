@@ -104,6 +104,12 @@ def _render_section(title: str, subtitle: str) -> None:
     )
 
 
+def _run_with_spinner(label: str, fn, *args, **kwargs):
+    """Run a callable with a visible Streamlit loading state."""
+    with st.spinner(label):
+        return fn(*args, **kwargs)
+
+
 def _tab_image_in_image() -> None:
     """Image-in-image tab: file uploaders, key, b slider, capacity, embed/decode."""
     _render_section(
@@ -137,8 +143,16 @@ def _tab_image_in_image() -> None:
         cover_bytes = cover_file.getvalue()
         secret_bytes = secret_file.getvalue()
 
-        cover_img = cache.cached_load_image(cover_bytes)
-        secret_img = cache.cached_load_image(secret_bytes)
+        cover_img = _run_with_spinner(
+            "Loading cover image...",
+            cache.cached_load_image,
+            cover_bytes,
+        )
+        secret_img = _run_with_spinner(
+            "Loading secret image...",
+            cache.cached_load_image,
+            secret_bytes,
+        )
 
         preview_left, preview_right = st.columns(2)
         with preview_left:
@@ -166,7 +180,9 @@ def _tab_image_in_image() -> None:
             if cover_bytes is None or secret_bytes is None:
                 raise ValueError("upload both cover and secret images")
 
-            stego_path, meta = cache.cached_embed(
+            stego_path, meta = _run_with_spinner(
+                "Embedding secret into image...",
+                cache.cached_embed,
                 "image_in_image",
                 cover_bytes,
                 secret_bytes,
@@ -238,7 +254,9 @@ def _tab_image_in_image() -> None:
                 raise ValueError("upload both stego image and sidecar metadata")
 
             meta = _parse_meta_json(meta_file.getvalue())
-            recovered_path = cache.cached_decode(
+            recovered_path = _run_with_spinner(
+                "Decoding secret from image...",
+                cache.cached_decode,
                 "image_in_image",
                 stego_file.getvalue(),
                 decode_key,
@@ -295,9 +313,17 @@ def _tab_image_in_video() -> None:
         cover_bytes = cover_file.getvalue()
         secret_bytes = secret_file.getvalue()
 
-        first_frame, fps, frame_count = cache.cached_probe_video(cover_bytes)
-        secret_img = cache.cached_load_image(secret_bytes)
-        secret_size = len(preprocess_image.serialize_image(secret_img))
+        first_frame, fps, frame_count = _run_with_spinner(
+            "Analyzing cover video for preview and capacity...",
+            cache.cached_probe_video,
+            cover_bytes,
+        )
+        secret_img = _run_with_spinner(
+            "Loading secret image...",
+            cache.cached_load_image,
+            secret_bytes,
+        )
+        secret_size = int(secret_img.size * secret_img.dtype.itemsize)
 
         st.caption(
             f"Cover video info: {frame_count} frames at {fps:.2f} fps | "
@@ -320,7 +346,9 @@ def _tab_image_in_video() -> None:
             if cover_bytes is None or secret_bytes is None:
                 raise ValueError("upload both cover video and secret image")
 
-            stego_path, meta = cache.cached_embed(
+            stego_path, meta = _run_with_spinner(
+                "Embedding secret into video. This may take some time for large files...",
+                cache.cached_embed,
                 "image_in_video",
                 cover_bytes,
                 secret_bytes,
@@ -392,7 +420,9 @@ def _tab_image_in_video() -> None:
                 raise ValueError("upload both stego video and sidecar metadata")
 
             meta = _parse_meta_json(meta_file.getvalue())
-            recovered_path = cache.cached_decode(
+            recovered_path = _run_with_spinner(
+                "Decoding secret from video. This may take some time for large files...",
+                cache.cached_decode,
                 "image_in_video",
                 stego_file.getvalue(),
                 decode_key,
