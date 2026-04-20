@@ -291,8 +291,8 @@ def _tab_image_in_video() -> None:
     up_left, up_right = st.columns(2)
     with up_left:
         cover_file = st.file_uploader(
-            "Cover video (MP4)",
-            type=["mp4"],
+            "Cover video (MP4 or MKV)",
+            type=["mp4", "mkv"],
             key="i2v_cover",
         )
     with up_right:
@@ -428,6 +428,7 @@ def _tab_image_in_video() -> None:
                 decode_key,
                 decode_b,
                 meta,
+                stego_file.name,
             )
             with open(recovered_path, "rb") as f:
                 recovered_data = f.read()
