@@ -146,14 +146,14 @@ def _tab_image_in_image() -> None:
                 cover_img,
                 caption=f"Cover preview: {cover_img.shape[1]}x{cover_img.shape[0]}",
                 channels="BGR",
-                use_container_width=True,
+                width="stretch",
             )
         with preview_right:
             st.image(
                 secret_img,
                 caption=f"Secret preview: {secret_img.shape[1]}x{secret_img.shape[0]}",
                 channels="BGR",
-                use_container_width=True,
+                width="stretch",
             )
 
         secret_size = len(preprocess_image.serialize_image(secret_img))

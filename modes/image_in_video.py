@@ -29,7 +29,13 @@ def _load_secret_image(path: str) -> np.ndarray:
 def _serialize_secret(secret: np.ndarray) -> tuple[bytes, dict]:
     """Serialize secret image bytes with metadata."""
     try:
-        return image.serialize_image(secret)
+        encoded = image.serialize_image(secret)
+        if not isinstance(encoded, (bytes, bytearray)):
+            raise ValueError("serialize_image must return bytes")
+        return bytes(encoded), {
+            "shape": list(secret.shape),
+            "dtype": str(secret.dtype),
+        }
     except NotImplementedError:
         secret = np.ascontiguousarray(secret)
         return secret.tobytes(), {

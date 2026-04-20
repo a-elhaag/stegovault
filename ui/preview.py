@@ -55,6 +55,6 @@ def render_frame_zero(
     st.caption("Frame-0 preview only. Full encode runs when you click Embed.")
     col_cover, col_stego = st.columns(2)
     with col_cover:
-        st.image(cover_frame, caption="Cover frame 0", channels="BGR", use_container_width=True)
+        st.image(cover_frame, caption="Cover frame 0", channels="BGR", width="stretch")
     with col_stego:
-        st.image(stego_frame, caption=f"Preview stego frame 0 (b={b})", channels="BGR", use_container_width=True)
+        st.image(stego_frame, caption=f"Preview stego frame 0 (b={b})", channels="BGR", width="stretch")
