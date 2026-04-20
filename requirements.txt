@@ -2,6 +2,6 @@ numpy
 opencv-python
 streamlit
 matplotlib
-imageio>=3.0.0
+imageio>=2.37.0
 imageio-ffmpeg
 pytest
