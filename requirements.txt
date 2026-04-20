@@ -1,7 +1,8 @@
 numpy
-opencv-python
+opencv-python-headless>=4.9.0
 streamlit
 matplotlib
 imageio>=2.37.0
+av>=17.0.0
 imageio-ffmpeg
 pytest
