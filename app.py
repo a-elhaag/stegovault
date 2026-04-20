@@ -295,24 +295,24 @@ def _tab_image_in_video() -> None:
         cover_bytes = cover_file.getvalue()
         secret_bytes = secret_file.getvalue()
 
-        frames, fps = cache.cached_extract_frames(cover_bytes)
+        first_frame, fps, frame_count = cache.cached_probe_video(cover_bytes)
         secret_img = cache.cached_load_image(secret_bytes)
         secret_size = len(preprocess_image.serialize_image(secret_img))
 
         st.caption(
-            f"Cover video info: {len(frames)} frames at {fps:.2f} fps | "
-            f"Frame size: {frames[0].shape[1]}x{frames[0].shape[0]}"
+            f"Cover video info: {frame_count} frames at {fps:.2f} fps | "
+            f"Frame size: {first_frame.shape[1]}x{first_frame.shape[0]}"
         )
 
         capacity_meter.render(
-            cover_shape=frames[0].shape,
+            cover_shape=first_frame.shape,
             b=b,
             secret_size=secret_size,
-            frame_count=len(frames),
+            frame_count=frame_count,
         )
-        fits = secret_size <= _capacity_bytes(frames[0].shape, b, frame_count=len(frames))
+        fits = secret_size <= _capacity_bytes(first_frame.shape, b, frame_count=frame_count)
 
-        preview.render_frame_zero(frames[0], secret_img, key, b)
+        preview.render_frame_zero(first_frame, secret_img, key, b)
 
     embed_disabled = not (cover_file and secret_file and key and fits)
     if st.button("Embed secret", key="i2v_embed_btn", disabled=embed_disabled):
