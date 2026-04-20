@@ -1,4 +1,4 @@
-"""Mode: PNG secret spread across MP4 cover frames. Owner: Youmna."""
+"""Mode: PNG secret spread across video cover frames. Owner: Youmna."""
 
 from __future__ import annotations
 
@@ -74,7 +74,7 @@ def _deserialize_secret(data: bytes, shape: list[int], dtype: str) -> np.ndarray
 
 
 def embed(cover_path: str, secret_path: str, key: str, b: int) -> tuple[str, dict]:
-    """Image-in-video pipeline. Returns (stego_mp4_path, meta).
+    """Image-in-video pipeline. Returns (stego_video_path, meta).
 
     Optimized for Streamlit constraints:
     We probe the video to check dimensions, calculate exact frames needed
@@ -121,7 +121,7 @@ def embed(cover_path: str, secret_path: str, key: str, b: int) -> tuple[str, dic
                 yield np.ascontiguousarray(frame)
             idx += 1
 
-    with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
+    with tempfile.NamedTemporaryFile(suffix=".mkv", delete=False) as tmp:
         stego_path = tmp.name
     
     video.reconstruct_video(_stream_video(), stego_path, fps)

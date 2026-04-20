@@ -11,7 +11,9 @@ Or store the secret alongside the cover without embedding it in the pixels.
 
 from __future__ import annotations
 
+import collections.abc
 import logging
+import os
 
 import imageio.v3 as iio
 import numpy as np
@@ -124,9 +126,6 @@ def extract_frame_stack(video_path: str) -> tuple[np.ndarray, float]:
 
     return frame_stack, fps
 
-
-import collections.abc
-
 def reconstruct_video(
     frames: collections.abc.Iterable[np.ndarray] | np.ndarray | list[np.ndarray],
     output_path: str,
@@ -134,9 +133,9 @@ def reconstruct_video(
 ) -> None:
     """Write video via libx264 codec (H.264).
 
-    Note: Video codecs introduce artifacts during RGB↔YUV conversion.
-    Pixel errors can be ±10-30 per channel. LSB embedding is viable at b≥3.
-    For byte-exact preservation, use uncompressed formats or custom storage.
+        Uses codec profile selected by output extension:
+            - `.mkv`: `ffv1` + `bgr0` for byte-exact preservation (stego-safe)
+            - otherwise: `libx264` + `yuv444p` for broad compatibility
 
     Codec spec:
         AGENTS.md specifies: libx264 -crf 0 -preset ultrafast -pix_fmt yuv444p
@@ -145,13 +144,21 @@ def reconstruct_video(
           crf is numeric (default 0, meaning lossless). Preset is auto-handled.
 
     Args:
-        frames: Iterable or array of (H, W, 3) uint8 RGB arrays.
+        frames: Iterable or array of (H, W, 3) uint8 frames.
         output_path: destination file path (extension preserved for metadata).
         fps: frames per second.
 
     Raises:
         ValueError: if frames list empty or frame has wrong shape/dtype.
     """
+    ext = os.path.splitext(output_path)[1].lower()
+    if ext == ".mkv":
+        codec = "ffv1"
+        out_pixel_format = "bgr0"
+    else:
+        codec = "libx264"
+        out_pixel_format = "yuv444p"
+
     has_frames = False
     
     with iio.imopen(output_path, "w", plugin="pyav") as writer:
@@ -168,9 +175,9 @@ def reconstruct_video(
             writer.write(
                 frame,
                 is_batch=False,
-                codec="libx264",
+                codec=codec,
                 fps=int(fps),
-                out_pixel_format="yuv444p",
+                out_pixel_format=out_pixel_format,
             )
             
     if not has_frames:

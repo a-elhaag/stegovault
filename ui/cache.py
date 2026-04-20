@@ -19,7 +19,7 @@ def _mode_temp_suffixes(mode: str) -> tuple[str, str, str]:
     """Return (cover_suffix, secret_suffix, stego_suffix) for a mode."""
     suffixes = {
         "image_in_image": (".png", ".png", ".png"),
-        "image_in_video": (".mp4", ".png", ".mp4"),
+        "image_in_video": (".mp4", ".png", ".mkv"),
         "video_in_video": (".mp4", ".mp4", ".mp4"),
     }
     if mode not in suffixes:

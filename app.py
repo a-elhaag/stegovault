@@ -285,7 +285,7 @@ def _tab_image_in_video() -> None:
     """Image-in-video tab: file uploaders, key, b slider, frame-0 preview, embed/decode."""
     _render_section(
         "Image in Video",
-        "Hide a PNG secret across MP4 cover frames with frame-0 live preview.",
+        "Hide a PNG secret across video cover frames with frame-0 live preview.",
     )
 
     up_left, up_right = st.columns(2)
@@ -371,15 +371,15 @@ def _tab_image_in_video() -> None:
             st.download_button(
                 label="Download stego video",
                 data=st.session_state["i2v_stego_data"],
-                file_name="stego_output.mp4",
-                mime="video/mp4",
+                file_name="stego_output.mkv",
+                mime="video/x-matroska",
                 key="i2v_dl_stego",
             )
         with dl_right:
             st.download_button(
                 label="Download sidecar metadata",
                 data=st.session_state["i2v_meta_data"],
-                file_name="stego_output.mp4.meta.json",
+                file_name="stego_output.mkv.meta.json",
                 mime="application/json",
                 key="i2v_dl_meta",
             )
@@ -387,14 +387,14 @@ def _tab_image_in_video() -> None:
     st.divider()
     _render_section(
         "Decode",
-        "Provide the stego MP4 and matching sidecar metadata to recover the secret image.",
+        "Provide the stego video and matching sidecar metadata to recover the secret image.",
     )
 
     dec_left, dec_right = st.columns(2)
     with dec_left:
         stego_file = st.file_uploader(
-            "Stego video (MP4)",
-            type=["mp4"],
+            "Stego video (MKV or MP4)",
+            type=["mkv", "mp4"],
             key="i2v_stego_input",
         )
     with dec_right:
