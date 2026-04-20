@@ -57,3 +57,6 @@ output/
 outputs/
 *.meta.json
 remember/
+
+# Completed TODOs (local)
+COMPLETED_TASKS.md
