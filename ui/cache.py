@@ -19,7 +19,7 @@ def _mode_temp_suffixes(mode: str) -> tuple[str, str, str]:
     """Return (cover_suffix, secret_suffix, stego_suffix) for a mode."""
     suffixes = {
         "image_in_image": (".png", ".png", ".png"),
-        "image_in_video": (".mp4", ".png", ".mp4"),
+        "image_in_video": (".mp4", ".png", ".mkv"),
         "video_in_video": (".mp4", ".mp4", ".mp4"),
     }
     if mode not in suffixes:
@@ -136,9 +136,21 @@ def cached_embed(
 
 
 @st.cache_data(show_spinner=False)
-def cached_decode(mode: str, stego_bytes: bytes, key: str, b: int, meta: dict) -> str:
+def cached_decode(
+    mode: str,
+    stego_bytes: bytes,
+    key: str,
+    b: int,
+    meta: dict,
+    stego_name: str | None = None,
+) -> str:
     """Cache-wrapped decode call dispatched by mode string."""
     _, _, stego_suffix = _mode_temp_suffixes(mode)
+    if stego_name:
+        guessed = os.path.splitext(stego_name)[1].lower()
+        if guessed:
+            stego_suffix = guessed
+
     with tempfile.NamedTemporaryFile(suffix=stego_suffix, delete=False) as stego_tmp:
         stego_tmp.write(stego_bytes)
         stego_path = stego_tmp.name
