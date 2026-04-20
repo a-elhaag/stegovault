@@ -131,21 +131,26 @@ def reconstruct_video(
     output_path: str,
     fps: float,
 ) -> None:
-    """Write video via libx264 codec (H.264).
+    """Write video via codec selected by file extension.
 
-        Uses codec profile selected by output extension:
-            - `.mkv`: `ffv1` + `bgr0` for byte-exact preservation (stego-safe)
-            - otherwise: `libx264` + `yuv444p` for broad compatibility
-
-    Codec spec:
-        AGENTS.md specifies: libx264 -crf 0 -preset ultrafast -pix_fmt yuv444p
-        In imageio.v3.imwrite context:
-          codec='libx264', fps=int(fps), out_pixel_format='yuv444p'
-          crf is numeric (default 0, meaning lossless). Preset is auto-handled.
+    CONTAINER & CODEC SELECTION:
+    - .mkv extension: FFV1 lossless codec + bgr0 pixel format
+      Guarantees byte-exact preservation (100% LSB recovery, mae=0.0).
+      Used for steganography where LSB corruption is unacceptable.
+      
+    - .mp4 (or other): libx264 lossless attempt with yuv444p
+      Theoretically lossless but not guaranteed for LSB-embedded content.
+      FFmpeg's libx264 at crf 0 may still corrupt pseudorandom LSBs.
+      NOT RECOMMENDED for steganography without extensive testing.
+    
+    REASON: LSB payloads look like random noise to video codecs.
+    Lossy codecs aggressively remove "noise" (our secret). Even lossless
+    codecs may apply transforms that corrupt LSBs. FFV1 is specifically
+    designed for frame-accurate preservation.
 
     Args:
         frames: Iterable or array of (H, W, 3) uint8 frames.
-        output_path: destination file path (extension preserved for metadata).
+        output_path: destination file path (extension drives codec selection).
         fps: frames per second.
 
     Raises:
@@ -156,32 +161,39 @@ def reconstruct_video(
         codec = "ffv1"
         out_pixel_format = "bgr0"
     else:
+        # MP4 or other: use libx264 lossless settings
         codec = "libx264"
         out_pixel_format = "yuv444p"
 
     has_frames = False
+    frame_list: list[np.ndarray] = []
     
-    with iio.imopen(output_path, "w", plugin="pyav") as writer:
-        for idx, frame in enumerate(frames):
-            has_frames = True
-            
-            if frame.dtype != np.uint8 or frame.ndim != 3 or frame.shape[2] != 3:
-                raise ValueError(
-                    f"unexpected frame shape/dtype at idx {idx}: {frame.shape}/{frame.dtype} "
-                    f"(expected (H, W, 3) uint8)"
-                )
-
-            # Write incrementally using stream API to minimize peaked memory
-            writer.write(
-                frame,
-                is_batch=False,
-                codec=codec,
-                fps=int(fps),
-                out_pixel_format=out_pixel_format,
+    # Collect frames and validate
+    for frame in frames:
+        if frame.dtype != np.uint8 or frame.ndim != 3 or frame.shape[2] != 3:
+            raise ValueError(
+                f"unexpected frame shape/dtype: {frame.shape}/{frame.dtype} "
+                f"(expected (H, W, 3) uint8)"
             )
-            
+        frame_list.append(np.ascontiguousarray(frame))
+        has_frames = True
+    
     if not has_frames:
         raise ValueError("no frames to write")
+    
+    # Stack frames for batch write
+    frame_stack = np.stack(frame_list, axis=0)
+    
+    # Write via imwrite with lossless codec configuration
+    # Note: imageio.v3 with pyav plugin passes codec params to ffmpeg
+    iio.imwrite(
+        output_path,
+        frame_stack,
+        plugin="pyav",
+        codec=codec,
+        fps=int(fps),
+        out_pixel_format=out_pixel_format,
+    )
 
 def extract_partial_frame_stack(video_path: str, num_frames: int) -> tuple[np.ndarray, float]:
     """Return (frame_stack, fps) of exactly num_frames from the start.
