@@ -79,28 +79,26 @@ def embed(cover_path: str, secret_path: str, key: str, b: int) -> tuple[str, dic
       7. reconstruct_video(stego_frames, output_path, fps)
       8. return stego_path, meta dict
     """
-    cover_frames, fps = video.extract_frames(cover_path)
+    cover_stack, fps = video.extract_frame_stack(cover_path)
     secret_img = _load_secret_image(secret_path)
     secret_bytes, secret_meta = _serialize_secret(secret_img)
 
     capacity.check_capacity(
-        cover_shape=cover_frames[0].shape,
+        cover_shape=cover_stack[0].shape,
         b=b,
         secret_size=len(secret_bytes),
-        frame_count=len(cover_frames),
+        frame_count=cover_stack.shape[0],
     )
 
     seed = spread.key_to_seed(key)
     encrypted = crypto.xor_bytes(secret_bytes, seed)
 
-    cover_stack = np.stack(cover_frames, axis=0)
-    stego_stack = lsb.embed(cover_stack, encrypted, b, seed)
-    # lsb.embed() returns C-contiguous array; convert to list for imageio
-    stego_frames = list(stego_stack)
+    # In-place embed avoids creating a second full-size video tensor.
+    stego_stack = lsb.embed(cover_stack, encrypted, b, seed, inplace=True)
 
     with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
         stego_path = tmp.name
-    video.reconstruct_video(stego_frames, stego_path, fps)
+    video.reconstruct_video(stego_stack, stego_path, fps)
 
     meta = {
         "mode": "image_in_video",
@@ -124,8 +122,7 @@ def decode(stego_path: str, key: str, b: int, meta: dict) -> str:
     secret_shape = list(meta["secret_shape"])
     secret_dtype = str(meta["secret_dtype"])
 
-    stego_frames, _ = video.extract_frames(stego_path)
-    stego_stack = np.stack(stego_frames, axis=0)
+    stego_stack, _ = video.extract_frame_stack(stego_path)
 
     seed = spread.key_to_seed(key)
     encrypted = lsb.decode(stego_stack, b, seed, secret_len)

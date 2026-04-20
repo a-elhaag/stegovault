@@ -12,7 +12,7 @@ import streamlit as st
 
 from modes import image_in_image, image_in_video, video_in_video
 from preprocessing.image import load_image
-from preprocessing.video import extract_frames
+from preprocessing.video import extract_frames, probe_video
 
 
 def _mode_temp_suffixes(mode: str) -> tuple[str, str, str]:
@@ -94,6 +94,22 @@ def cached_extract_frames(file_bytes: bytes) -> tuple[list[np.ndarray], float]:
         tmp_path = tmp.name
     try:
         return extract_frames(tmp_path)
+    finally:
+        os.unlink(tmp_path)
+
+
+@st.cache_data(show_spinner=False)
+def cached_probe_video(file_bytes: bytes) -> tuple[np.ndarray, float, int]:
+    """Cache-wrapped preprocessing.video.probe_video.
+
+    Returns first frame, fps, and frame count without retaining all decoded
+    frames in memory.
+    """
+    with tempfile.NamedTemporaryFile(suffix=".bin", delete=False) as tmp:
+        tmp.write(file_bytes)
+        tmp_path = tmp.name
+    try:
+        return probe_video(tmp_path)
     finally:
         os.unlink(tmp_path)
 
