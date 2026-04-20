@@ -81,6 +81,11 @@ def embed(cover_path: str, secret_path: str, key: str, b: int) -> tuple[str, dic
     for the secret capacity, extract *only* those frames to a numpy stack,
     embed the hidden data, then reconstruct the video via a generator which
     yields the modified frames followed by the untouched remaining frames.
+    
+    OUTPUT CONTAINER: MKV with FFV1 codec
+    - MP4 + libx264 cannot preserve LSBs reliably (codec treats patterns as noise).
+    - MKV + FFV1 (FFmpeg lossless codec) with bgr0 pixel format preserves every byte.
+    - This is the only container that guarantees 100% LSB recovery (mae=0.0).
     """
     first_frame, fps, frame_count = video.probe_video(cover_path)
     secret_img = _load_secret_image(secret_path)
