@@ -66,6 +66,12 @@ def reconstruct_video(
     Pixel errors can be ±10-30 per channel. LSB embedding is viable at b≥3.
     For byte-exact preservation, use uncompressed formats or custom storage.
 
+    Codec spec:
+        AGENTS.md specifies: libx264 -crf 0 -preset ultrafast -pix_fmt yuv444p
+        In imageio.v3.imwrite context:
+          codec='libx264', fps=int(fps), out_pixel_format='yuv444p'
+          crf is numeric (default 0, meaning lossless). Preset is auto-handled.
+
     Args:
         frames: list of (H, W, 3) uint8 RGB arrays.
         output_path: destination file path (extension preserved for metadata).
