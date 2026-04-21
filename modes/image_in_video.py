@@ -1,55 +1,102 @@
 import cv2
+import struct
+import numpy as np
 
 
-def resize_overlay(overlay, max_width=150):
-    h, w = overlay.shape[:2]
-    scale = max_width / w
-    return cv2.resize(overlay, (int(w * scale), int(h * scale)))
+def to_bits(data: bytes):
+    return ''.join(f"{byte:08b}" for byte in data)
 
 
-def overlay_image(frame, overlay, x, y, alpha=0.7):
-    h, w = overlay.shape[:2]
+def from_bits(bits: str):
+    return bytes(int(bits[i:i+8], 2) for i in range(0, len(bits), 8))
 
 
-    if y + h > frame.shape[0] or x + w > frame.shape[1]:
-        return frame
-
-    roi = frame[y:y+h, x:x+w]
-
-    
-    blended = cv2.addWeighted(roi, 1 - alpha, overlay, alpha, 0)
-
-    frame[y:y+h, x:x+w] = blended
-    return frame
-
-
-def image_in_video(video_path, image_path, output_path):
+# ================= EMBED =================
+def embed(video_path, image_path, output_path):
     cap = cv2.VideoCapture(video_path)
 
-    overlay = cv2.imread(image_path)
-    overlay = resize_overlay(overlay)
+    if not cap.isOpened():
+        raise ValueError("Cannot open video")
+
+    img = cv2.imread(image_path)
+    if img is None:
+        raise ValueError("Cannot read image")
+
+    h, w, c = img.shape
+    data = img.tobytes()
+
+    # header: height, width, channels, data length
+    header = struct.pack("IIII", h, w, c, len(data))
+    payload = header + data
+
+    bits = to_bits(payload)
+    bit_idx = 0
 
     width = int(cap.get(3))
     height = int(cap.get(4))
+    fps = cap.get(cv2.CAP_PROP_FPS) or 20.0
 
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(output_path, fourcc, 20.0, (width, height))
+    # lossless codec
+    fourcc = cv2.VideoWriter_fourcc(*'FFV1')
+    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+
+    capacity = width * height * 3 * int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    if len(bits) > capacity:
+        raise ValueError("Data too large for video capacity")
 
     while True:
         ret, frame = cap.read()
         if not ret:
             break
 
-    
-        x = width - overlay.shape[1] - 10
-        y = 10
+        flat = frame.flatten()
 
-        frame = overlay_image(frame, overlay, x, y)
+        for i in range(len(flat)):
+            if bit_idx < len(bits):
+                
+                flat[i] = (int(flat[i]) & 254) | int(bits[bit_idx])
+                bit_idx += 1
 
+        frame = flat.reshape(frame.shape)
         out.write(frame)
 
     cap.release()
     out.release()
 
-    print("Video created successfully!")
     return output_path
+
+
+# ================= DECODE =================
+def decode(video_path, output_image_path="decoded.png"):
+    cap = cv2.VideoCapture(video_path)
+
+    if not cap.isOpened():
+        raise ValueError("Cannot open video")
+
+    bits = ""
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        flat = frame.flatten()
+
+        for value in flat:
+            bits += str(value & 1)
+
+    cap.release()
+
+
+    header_bytes = from_bits(bits[:128])
+    h, w, c, length = struct.unpack("IIII", header_bytes)
+
+    data_bits = bits[128:128 + (length * 8)]
+    data_bytes = from_bits(data_bits)
+
+    img_array = np.frombuffer(data_bytes, dtype=np.uint8)
+    img = img_array.reshape((h, w, c))
+
+    cv2.imwrite(output_image_path, img)
+
+    return output_image_path
