@@ -10,13 +10,13 @@ def resize_overlay(overlay, max_width=150):
 def overlay_image(frame, overlay, x, y, alpha=0.7):
     h, w = overlay.shape[:2]
 
-    # حماية من الخروج بره الصورة
+
     if y + h > frame.shape[0] or x + w > frame.shape[1]:
         return frame
 
     roi = frame[y:y+h, x:x+w]
 
-    # دمج بشفافية
+    
     blended = cv2.addWeighted(roi, 1 - alpha, overlay, alpha, 0)
 
     frame[y:y+h, x:x+w] = blended
@@ -40,7 +40,7 @@ def image_in_video(video_path, image_path, output_path):
         if not ret:
             break
 
-        # مكان الصورة (يمين فوق)
+    
         x = width - overlay.shape[1] - 10
         y = 10
 
