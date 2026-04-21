@@ -1,102 +1,111 @@
-import cv2
-import struct
+from __future__ import annotations
+
+from pathlib import Path
 import numpy as np
 
-
-def to_bits(data: bytes):
-    return ''.join(f"{byte:08b}" for byte in data)
-
-
-def from_bits(bits: str):
-    return bytes(int(bits[i:i+8], 2) for i in range(0, len(bits), 8))
+from engine import capacity, crypto, lsb, spread
+from preprocessing import image as preprocess_image
+from preprocessing import video as preprocess_video
 
 
 # ================= EMBED =================
-def embed(video_path, image_path, output_path):
-    cap = cv2.VideoCapture(video_path)
+def embed(video_path: str, secret_path: str, key: str, b: int) -> tuple[str, dict]:
+    """
+    Full image-in-video pipeline.
 
-    if not cap.isOpened():
-        raise ValueError("Cannot open video")
+    Returns:
+        (stego_video_path, meta)
+    """
 
-    img = cv2.imread(image_path)
-    if img is None:
-        raise ValueError("Cannot read image")
+    if b not in range(1, 5):
+        raise ValueError(f"b must be in [1, 4], got {b}")
 
-    h, w, c = img.shape
-    data = img.tobytes()
+    # 1. extract frames
+    frames, fps = preprocess_video.extract_frames(video_path)
 
-    # header: height, width, channels, data length
-    header = struct.pack("IIII", h, w, c, len(data))
-    payload = header + data
+    if len(frames) == 0:
+        raise ValueError("Video has no frames")
 
-    bits = to_bits(payload)
-    bit_idx = 0
+    # 2. load + serialize secret image
+    secret = preprocess_image.load_image(secret_path)
+    secret_bytes = preprocess_image.serialize_image(secret)
 
-    width = int(cap.get(3))
-    height = int(cap.get(4))
-    fps = cap.get(cv2.CAP_PROP_FPS) or 20.0
+    # 3. capacity check (total pixels in all frames)
+    total_pixels = sum(frame.size for frame in frames)
+    capacity.check_capacity((total_pixels,), b, len(secret_bytes))
 
-    # lossless codec
-    fourcc = cv2.VideoWriter_fourcc(*'FFV1')
-    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+    # 4. key → seed
+    seed = spread.key_to_seed(key)
 
-    capacity = width * height * 3 * int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    if len(bits) > capacity:
-        raise ValueError("Data too large for video capacity")
+    # 5. encrypt
+    encrypted = crypto.xor_bytes(secret_bytes, seed)
 
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
+    # 6. flatten all frames into one big array
+    flat = np.concatenate([f.flatten() for f in frames])
 
-        flat = frame.flatten()
+    # 7. embed using LSB engine
+    stego_flat = lsb.embed(flat, encrypted, b, seed)
 
-        for i in range(len(flat)):
-            if bit_idx < len(bits):
-                
-                flat[i] = (int(flat[i]) & 254) | int(bits[bit_idx])
-                bit_idx += 1
+    # 8. reshape back to frames
+    idx = 0
+    new_frames = []
+    for f in frames:
+        size = f.size
+        new_f = stego_flat[idx:idx+size].reshape(f.shape)
+        new_frames.append(new_f)
+        idx += size
 
-        frame = flat.reshape(frame.shape)
-        out.write(frame)
+    # 9. reconstruct video
+    output_path = str(Path(video_path).parent / "stego_video.mkv")
+    preprocess_video.reconstruct_video(new_frames, output_path, fps)
 
-    cap.release()
-    out.release()
+    # 10. metadata
+    meta = {
+        "mode": "image_in_video",
+        "secret_len": len(secret_bytes),
+        "secret_shape": list(secret.shape),
+        "secret_dtype": "uint8",
+        "b": b,
+        "fps": fps,
+        "frame_count": len(frames),
+    }
 
-    return output_path
+    return output_path, meta
 
 
 # ================= DECODE =================
-def decode(video_path, output_image_path="decoded.png"):
-    cap = cv2.VideoCapture(video_path)
+def decode(stego_video_path: str, key: str, b: int, meta: dict) -> str:
+    """
+    Recover hidden image from video.
+    """
 
-    if not cap.isOpened():
-        raise ValueError("Cannot open video")
+    if b not in range(1, 5):
+        raise ValueError(f"b must be in [1, 4], got {b}")
 
-    bits = ""
+    # 1. extract frames
+    frames, _ = preprocess_video.extract_frames(stego_video_path)
 
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
+    if len(frames) == 0:
+        raise ValueError("Video has no frames")
 
-        flat = frame.flatten()
+    # 2. flatten frames
+    flat = np.concatenate([f.flatten() for f in frames])
 
-        for value in flat:
-            bits += str(value & 1)
+    # 3. regenerate seed
+    seed = spread.key_to_seed(key)
 
-    cap.release()
+    # 4. decode encrypted bytes
+    secret_len = meta["secret_len"]
+    encrypted = lsb.decode(flat, b, seed, secret_len)
 
+    # 5. decrypt
+    secret_bytes = crypto.xor_bytes(encrypted, seed)
 
-    header_bytes = from_bits(bits[:128])
-    h, w, c, length = struct.unpack("IIII", header_bytes)
+    # 6. deserialize image
+    secret = preprocess_image.deserialize_image(secret_bytes)
 
-    data_bits = bits[128:128 + (length * 8)]
-    data_bytes = from_bits(data_bits)
+    # 7. save result
+    output_path = str(Path(stego_video_path).parent / "recovered_secret.png")
+    preprocess_image.save_image(secret, output_path)
 
-    img_array = np.frombuffer(data_bytes, dtype=np.uint8)
-    img = img_array.reshape((h, w, c))
-
-    cv2.imwrite(output_image_path, img)
-
-    return output_image_path
+    return output_path
