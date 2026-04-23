@@ -165,35 +165,45 @@ def reconstruct_video(
         codec = "libx264"
         out_pixel_format = "yuv444p"
 
-    has_frames = False
-    frame_list: list[np.ndarray] = []
-    
-    # Collect frames and validate
-    for frame in frames:
+    frame_iter = iter(frames)
+    try:
+        first_frame = next(frame_iter)
+    except StopIteration:
+        raise ValueError("no frames to write")
+
+    def _validate_frame(frame: np.ndarray) -> np.ndarray:
         if frame.dtype != np.uint8 or frame.ndim != 3 or frame.shape[2] != 3:
             raise ValueError(
                 f"unexpected frame shape/dtype: {frame.shape}/{frame.dtype} "
                 f"(expected (H, W, 3) uint8)"
             )
-        frame_list.append(np.ascontiguousarray(frame))
-        has_frames = True
-    
-    if not has_frames:
-        raise ValueError("no frames to write")
-    
-    # Stack frames for batch write
-    frame_stack = np.stack(frame_list, axis=0)
-    
-    # Write via imwrite with lossless codec configuration
-    # Note: imageio.v3 with pyav plugin passes codec params to ffmpeg
-    iio.imwrite(
+        return np.ascontiguousarray(frame)
+
+    with iio.imopen(
         output_path,
-        frame_stack,
+        "w",
         plugin="pyav",
-        codec=codec,
-        fps=int(fps),
-        out_pixel_format=out_pixel_format,
-    )
+    ) as writer:
+        batch: list[np.ndarray] = [_validate_frame(first_frame)]
+        batch_size = 16
+
+        def _flush(current_batch: list[np.ndarray], use_codec: bool) -> None:
+            if not current_batch:
+                return
+            writer.write(
+                np.stack(current_batch, axis=0),
+                codec=codec if use_codec else None,
+                fps=int(fps),
+                out_pixel_format=out_pixel_format,
+            )
+
+        for frame in frame_iter:
+            batch.append(_validate_frame(frame))
+            if len(batch) >= batch_size:
+                _flush(batch, use_codec=True)
+                batch = []
+
+        _flush(batch, use_codec=True)
 
 def extract_partial_frame_stack(video_path: str, num_frames: int) -> tuple[np.ndarray, float]:
     """Return (frame_stack, fps) of exactly num_frames from the start.

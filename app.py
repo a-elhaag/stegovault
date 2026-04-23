@@ -3,6 +3,12 @@
 from __future__ import annotations
 
 import json
+import os
+
+import cv2
+
+# Allow larger video uploads (value is in MB).
+os.environ["STREAMLIT_SERVER_MAX_UPLOAD_SIZE"] = "1024"
 
 import streamlit as st
 
@@ -287,6 +293,7 @@ def _tab_image_in_video() -> None:
         "Image in Video",
         "Hide a PNG secret across video cover frames with frame-0 live preview.",
     )
+    st.caption("Video upload limit: up to 1 GB per file.")
 
     up_left, up_right = st.columns(2)
     with up_left:
@@ -294,6 +301,7 @@ def _tab_image_in_video() -> None:
             "Cover video (MP4 or MKV)",
             type=["mp4", "mkv"],
             key="i2v_cover",
+            help="Maximum upload size: 1 GB.",
         )
     with up_right:
         secret_file = st.file_uploader(
@@ -308,6 +316,7 @@ def _tab_image_in_video() -> None:
     cover_bytes = None
     secret_bytes = None
     fits = False
+    grayscale_fallback = False
 
     if cover_file and secret_file:
         cover_bytes = cover_file.getvalue()
@@ -396,6 +405,7 @@ def _tab_image_in_video() -> None:
             "Stego video (MKV or MP4)",
             type=["mkv", "mp4"],
             key="i2v_stego_input",
+            help="Maximum upload size: 1 GB.",
         )
     with dec_right:
         meta_file = st.file_uploader(
@@ -449,12 +459,200 @@ def _tab_image_in_video() -> None:
 
 
 def _tab_video_in_video() -> None:
-    """Video-in-video tab: file uploaders, key, b slider, frame-0 preview, embed/decode."""
+    """Video-in-video tab: file uploaders, key, b slider, preview, embed/decode."""
     _render_section(
         "Video in Video",
-        "This tab is intentionally disabled while the mode pipeline is still under implementation.",
+        "Hide a video secret inside a video cover using lossless LSB embedding and XOR.",
     )
-    st.info("Video-in-video processing is not enabled yet. Use Image in Image or Image in Video for now.")
+    st.caption("Video-in-video upload limit: up to 1 GB per file.")
+
+    up_left, up_right = st.columns(2)
+    with up_left:
+        cover_file = st.file_uploader(
+            "Cover video (MP4 or MKV, up to 1 GB)",
+            type=["mp4", "mkv"],
+            key="v2v_cover",
+            help="Maximum upload size: 1 GB.",
+        )
+    with up_right:
+        secret_file = st.file_uploader(
+            "Secret video (MP4 or MKV, up to 1 GB)",
+            type=["mp4", "mkv"],
+            key="v2v_secret",
+            help="Maximum upload size: 1 GB.",
+        )
+
+    key = st.text_input("Encryption key", key="v2v_key", type="password")
+    b = st.slider("Bit depth (b)", min_value=1, max_value=4, value=2, key="v2v_b")
+
+    cover_bytes = None
+    secret_bytes = None
+    fits = False
+
+    if cover_file and secret_file:
+        cover_bytes = cover_file.getvalue()
+        secret_bytes = secret_file.getvalue()
+
+        cover_first_frame, cover_fps, cover_frame_count = _run_with_spinner(
+            "Analyzing cover video for preview and capacity...",
+            cache.cached_probe_video,
+            cover_bytes,
+        )
+        secret_first_frame, secret_fps, secret_frame_count = _run_with_spinner(
+            "Analyzing secret video...",
+            cache.cached_probe_video,
+            secret_bytes,
+        )
+
+        st.caption(
+            f"Cover video info: {cover_frame_count} frames at {cover_fps:.2f} fps | "
+            f"Frame size: {cover_first_frame.shape[1]}x{cover_first_frame.shape[0]}"
+        )
+        st.caption(
+            f"Secret video info: {secret_frame_count} frames at {secret_fps:.2f} fps | "
+            f"Frame size: {secret_first_frame.shape[1]}x{secret_first_frame.shape[0]}"
+        )
+
+        if secret_frame_count > cover_frame_count:
+            st.warning(
+                "The secret has more frames than the cover. Embedding can still proceed "
+                "if the byte capacity fits, but the temporal ratio is denser than the cover."
+            )
+
+        secret_preview = cv2.resize(
+            secret_first_frame,
+            (cover_first_frame.shape[1], cover_first_frame.shape[0]),
+            interpolation=cv2.INTER_AREA,
+        )
+
+        color_secret_size = int(secret_frame_count * cover_first_frame.shape[0] * cover_first_frame.shape[1] * cover_first_frame.shape[2])
+        gray_secret_size = int(secret_frame_count * cover_first_frame.shape[0] * cover_first_frame.shape[1])
+        chosen_size = color_secret_size
+        if color_secret_size <= _capacity_bytes(cover_first_frame.shape, b, frame_count=cover_frame_count):
+            fits = True
+        elif gray_secret_size <= _capacity_bytes(cover_first_frame.shape, b, frame_count=cover_frame_count):
+            fits = True
+            grayscale_fallback = True
+            chosen_size = gray_secret_size
+            st.info(
+                "The color version does not fit, but the secret will be auto-converted to grayscale and can be embedded."
+            )
+        capacity_meter.render(
+            cover_shape=cover_first_frame.shape,
+            b=b,
+            secret_size=chosen_size,
+            frame_count=cover_frame_count,
+        )
+
+        preview.render_frame_zero(cover_first_frame, secret_preview, key, b)
+
+    embed_disabled = not (cover_file and secret_file and key and fits)
+    if st.button("Embed secret", key="v2v_embed_btn", disabled=embed_disabled):
+        try:
+            if cover_bytes is None or secret_bytes is None:
+                raise ValueError("upload both cover video and secret video")
+
+            stego_path, meta = _run_with_spinner(
+                "Embedding secret into video. This may take some time for large files...",
+                cache.cached_embed,
+                "video_in_video",
+                cover_bytes,
+                secret_bytes,
+                key,
+                b,
+            )
+            with open(stego_path, "rb") as f:
+                stego_data = f.read()
+
+            meta_data = json.dumps(meta, indent=2).encode("utf-8")
+            st.session_state["v2v_stego_data"] = stego_data
+            st.session_state["v2v_meta_data"] = meta_data
+            st.success("Embedding complete.")
+        except Exception as exc:
+            st.error(f"Embedding failed: {exc}")
+
+    if "v2v_stego_data" in st.session_state:
+        dl_left, dl_right = st.columns(2)
+        with dl_left:
+            st.download_button(
+                label="Download stego video",
+                data=st.session_state["v2v_stego_data"],
+                file_name="stego_output.mkv",
+                mime="video/x-matroska",
+                key="v2v_dl_stego",
+            )
+        with dl_right:
+            st.download_button(
+                label="Download sidecar metadata",
+                data=st.session_state["v2v_meta_data"],
+                file_name="stego_output.mkv.meta.json",
+                mime="application/json",
+                key="v2v_dl_meta",
+            )
+
+    st.divider()
+    _render_section(
+        "Decode",
+        "Provide the stego video and matching sidecar metadata to recover the secret video.",
+    )
+
+    dec_left, dec_right = st.columns(2)
+    with dec_left:
+        stego_file = st.file_uploader(
+            "Stego video (MKV or MP4, up to 1 GB)",
+            type=["mkv", "mp4"],
+            key="v2v_stego_input",
+            help="Maximum upload size: 1 GB.",
+        )
+    with dec_right:
+        meta_file = st.file_uploader(
+            "Metadata sidecar (.json)",
+            type=["json"],
+            key="v2v_meta_input",
+        )
+
+    decode_key = st.text_input("Key for decode", key="v2v_decode_key", type="password")
+    decode_b = st.slider(
+        "Bit depth used during embed",
+        min_value=1,
+        max_value=4,
+        value=2,
+        key="v2v_decode_b",
+    )
+
+    decode_disabled = not (stego_file and meta_file and decode_key)
+    if st.button("Decode secret", key="v2v_decode_btn", disabled=decode_disabled):
+        try:
+            if stego_file is None or meta_file is None:
+                raise ValueError("upload both stego video and sidecar metadata")
+
+            meta = _parse_meta_json(meta_file.getvalue())
+            recovered_path = _run_with_spinner(
+                "Decoding secret from video. This may take some time for large files...",
+                cache.cached_decode,
+                "video_in_video",
+                stego_file.getvalue(),
+                decode_key,
+                decode_b,
+                meta,
+                stego_file.name,
+            )
+            with open(recovered_path, "rb") as f:
+                recovered_data = f.read()
+
+            st.session_state["v2v_recovered_data"] = recovered_data
+            st.success("Decoding complete.")
+        except Exception as exc:
+            st.error(f"Decoding failed: {exc}")
+
+    if "v2v_recovered_data" in st.session_state:
+        st.download_button(
+            label="Download recovered secret",
+            data=st.session_state["v2v_recovered_data"],
+            file_name="recovered_secret.mkv",
+            mime="video/x-matroska",
+            key="v2v_dl_recovered",
+        )
 
 
 def _tab_demo() -> None:
