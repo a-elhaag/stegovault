@@ -172,7 +172,8 @@ def embed_video(cover_path: str, secret_path: str, key: str, b: int) -> tuple[st
       chunk = bytes(secret_buffer[:take])
       del secret_buffer[:take]
       emitted_secret_bytes += take
-      yield lsb.embed(cover_frame, chunk, b, seed + frame_index)
+      encrypted_chunk = crypto.xor_bytes(chunk, seed)
+      yield lsb.embed(cover_frame, encrypted_chunk, b, seed + frame_index)
 
   with tempfile.NamedTemporaryFile(suffix=".mkv", delete=False) as tmp:
     stego_path = tmp.name
