@@ -1,7 +1,0 @@
-objc[25423]: Class AVFFrameReceiver is implemented in both /Users/anas/Projects/stegovault/venv/lib/python3.14/site-packages/cv2/.dylibs/libavdevice.61.3.100.dylib (0x105c343a8) and /Users/anas/Projects/stegovault/venv/lib/python3.14/site-packages/av/.dylibs/libavdevice.62.1.100.dylib (0x10f0543a8). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
-objc[25423]: Class AVFAudioReceiver is implemented in both /Users/anas/Projects/stegovault/venv/lib/python3.14/site-packages/cv2/.dylibs/libavdevice.61.3.100.dylib (0x105c343f8) and /Users/anas/Projects/stegovault/venv/lib/python3.14/site-packages/av/.dylibs/libavdevice.62.1.100.dylib (0x10f0543f8). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
-Diagnostic Report:
-b=1: MAE=84.9919, Exact Match=False
-b=2: MAE=84.6877, Exact Match=False
-b=3: MAE=85.8518, Exact Match=False
-b=4: MAE=84.6396, Exact Match=False
