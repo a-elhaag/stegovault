@@ -5,13 +5,15 @@ import numpy as np
 from engine.spread import get_pixel_order
 
 
-def embed(cover: np.ndarray, secret_bytes: bytes, b: int, seed: int, inplace: bool = False) -> np.ndarray:
+def embed(
+    cover: np.ndarray, secret_bytes: bytes, b: int, seed: int, inplace: bool = False
+) -> np.ndarray:
     """Embed secret_bytes in LSBs of cover using spread-spectrum ordering.
-    
+
     Replaces the bottom b bits of randomly-ordered (seeded) pixel channels
     with secret bits. Uses XOR encryption (applied by caller) to avoid plaintext
     pattern leakage.
-    
+
     Args:
         cover: (H, W, C) or (frames, H, W, C) uint8 array. Will not be modified
                unless inplace=True.
@@ -20,21 +22,21 @@ def embed(cover: np.ndarray, secret_bytes: bytes, b: int, seed: int, inplace: bo
         seed: RNG seed for deterministic pixel ordering (from key_to_seed).
         inplace: if True, modify cover array directly (no copy). Use only if cover
                  is temporary/working array. Default False preserves input.
-    
+
     Returns:
         stego: uint8 array with embedded secret (same shape as cover).
                Always C-contiguous for safe use with cv2/imageio.
-    
+
     Raises:
         ValueError: if b not in [1, 4] or arrays have unexpected dtype.
-    
+
     Examples:
         >>> cover = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)
         >>> secret = b'hello world'
         >>> stego = embed(cover, secret, b=2, seed=42)
         >>> assert stego.shape == cover.shape
         >>> assert stego.dtype == np.uint8
-        
+
     Performance Note:
         - Default behavior (inplace=False): creates 1× copy of cover.
           Peak memory = 2× cover size during operation.
@@ -54,10 +56,10 @@ def embed(cover: np.ndarray, secret_bytes: bytes, b: int, seed: int, inplace: bo
     # Pack bits into b-bit chunks (pad end with 0s if not multiple of b)
     n_bits = len(secret_bytes) * 8
     n_chunks = (n_bits + b - 1) // b
-    
+
     if n_bits % b != 0:
         bits = np.pad(bits, (0, n_chunks * b - n_bits), constant_values=0)
-        
+
     chunks = bits.reshape(n_chunks, b)
     # Each row is b bits MSB-first → integer value 0..(2^b - 1)
     values = np.packbits(
@@ -76,24 +78,24 @@ def embed(cover: np.ndarray, secret_bytes: bytes, b: int, seed: int, inplace: bo
 
 def decode(stego: np.ndarray, b: int, seed: int, secret_len: int) -> bytes:
     """Extract secret bytes from LSBs of stego (inverse of embed).
-    
+
     Reads the bottom b bits of randomly-ordered (seeded) pixel channels,
     unpacks them to bytes, and returns encrypted secret. Caller must XOR
     with same seed to recover plaintext.
-    
+
     Args:
         stego: (H, W, C) or (frames, H, W, C) uint8 array with embedded secret.
         b: bit depth used during embedding [1, 4].
         seed: RNG seed used during embedding (must be identical).
         secret_len: byte length of embedded secret (must be accurate).
-    
+
     Returns:
         secret_bytes: encrypted bytes extracted from LSBs (length = secret_len).
                       Still encrypted; caller must xor_bytes(result, seed) to decrypt.
-    
+
     Raises:
         ValueError: if b not in [1, 4] or array has unexpected dtype.
-    
+
     Examples:
         >>> stego = np.random.randint(0, 256, (480, 640, 3), dtype=np.uint8)
         >>> secret = b'hello world'
@@ -115,7 +117,7 @@ def decode(stego: np.ndarray, b: int, seed: int, secret_len: int) -> bytes:
 
     # Unpack each value into b bits (MSB-first within b-bit window)
     # Shift values to MSB position in a byte, then unpackbits
-    shifted = (values.astype(np.uint8) << (8 - b))
+    shifted = values.astype(np.uint8) << (8 - b)
     bits_2d = np.unpackbits(shifted)  # n_chunks * 8 bits, but we want b per chunk
     # Take only the top b bits from each byte-worth
     bits = bits_2d.reshape(n_chunks, 8)[:, :b].reshape(-1)
