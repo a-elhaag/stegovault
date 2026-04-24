@@ -245,13 +245,6 @@ def _tab_image_in_image() -> None:
         )
 
     decode_key = st.text_input("Key for decode", key="i2i_decode_key", type="password")
-    decode_b = st.slider(
-        "Bit depth used during embed",
-        min_value=1,
-        max_value=4,
-        value=2,
-        key="i2i_decode_b",
-    )
 
     decode_disabled = not (stego_file and meta_file and decode_key)
     if st.button("Decode secret", key="i2i_decode_btn", disabled=decode_disabled):
@@ -266,7 +259,6 @@ def _tab_image_in_image() -> None:
                 "image_in_image",
                 stego_file.getvalue(),
                 decode_key,
-                decode_b,
                 meta,
             )
             with open(recovered_path, "rb") as f:
@@ -415,13 +407,6 @@ def _tab_image_in_video() -> None:
         )
 
     decode_key = st.text_input("Key for decode", key="i2v_decode_key", type="password")
-    decode_b = st.slider(
-        "Bit depth used during embed",
-        min_value=1,
-        max_value=4,
-        value=2,
-        key="i2v_decode_b",
-    )
 
     decode_disabled = not (stego_file and meta_file and decode_key)
     if st.button("Decode secret", key="i2v_decode_btn", disabled=decode_disabled):
@@ -436,7 +421,6 @@ def _tab_image_in_video() -> None:
                 "image_in_video",
                 stego_file.getvalue(),
                 decode_key,
-                decode_b,
                 meta,
                 stego_file.name,
             )
@@ -612,13 +596,6 @@ def _tab_video_in_video() -> None:
         )
 
     decode_key = st.text_input("Key for decode", key="v2v_decode_key", type="password")
-    decode_b = st.slider(
-        "Bit depth used during embed",
-        min_value=1,
-        max_value=4,
-        value=2,
-        key="v2v_decode_b",
-    )
 
     decode_disabled = not (stego_file and meta_file and decode_key)
     if st.button("Decode secret", key="v2v_decode_btn", disabled=decode_disabled):
@@ -633,7 +610,6 @@ def _tab_video_in_video() -> None:
                 "video_in_video",
                 stego_file.getvalue(),
                 decode_key,
-                decode_b,
                 meta,
                 stego_file.name,
             )

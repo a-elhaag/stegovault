@@ -193,8 +193,9 @@ def embed_video(cover_path: str, secret_path: str, key: str, b: int) -> tuple[st
   return stego_path, meta
 
 
-def extract_video(stego_path: str, key: str, b: int, meta: dict) -> str:
+def extract_video(stego_path: str, key: str, meta: dict) -> str:
   """Recover a secret video from a stego video using the provided metadata."""
+  b = int(meta["b"])
   for field in ("secret_len", "secret_shape", "secret_dtype", "frame_count"):
     if field not in meta:
       raise ValueError(f"missing required meta field: {field}")
@@ -286,6 +287,6 @@ def embed(cover_path: str, secret_path: str, key: str, b: int) -> tuple[str, dic
   return embed_video(cover_path, secret_path, key, b)
 
 
-def decode(stego_path: str, key: str, b: int, meta: dict) -> str:
+def decode(stego_path: str, key: str, meta: dict) -> str:
   """Alias for extract_video to match the cached UI dispatch contract."""
-  return extract_video(stego_path, key, b, meta)
+  return extract_video(stego_path, key, meta)

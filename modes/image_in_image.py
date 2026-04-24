@@ -81,21 +81,21 @@ def embed(cover_path: str, secret_path: str, key: str, b: int) -> tuple[str, dic
     return output_path, meta
 
 
-def decode(stego_path: str, key: str, b: int, meta: dict) -> str:
+def decode(stego_path: str, key: str, meta: dict) -> str:
     """Inverse pipeline. Returns path to recovered secret PNG.
-    
+
     Args:
         stego_path: Path to stego image file.
         key: Encryption key (same as used in embed).
-        b: Bit depth [1, 4] (same as used in embed).
-        meta: Metadata dict from embed (contains secret_len).
-    
+        meta: Metadata dict from embed (contains secret_len and b).
+
     Returns:
         Path to recovered secret image PNG file.
-    
+
     Raises:
         ValueError: If image cannot be loaded or decoding fails.
     """
+    b = int(meta["b"])
     # Validate b
     if b not in range(1, 5):
         raise ValueError(f"b must be in [1, 4], got {b}")

@@ -85,7 +85,7 @@ def test_decode_recovers_video() -> None:
     try:
         stego_path, meta = embed(cover_path, secret_path, key="decode-key", b=4)
         try:
-            recovered_path = decode(stego_path, key="decode-key", b=4, meta=meta)
+            recovered_path = decode(stego_path, key="decode-key", meta=meta)
             try:
                 recovered_frames, recovered_fps = extract_frame_stack(recovered_path)
                 assert recovered_frames.shape == secret_frames.shape
@@ -123,7 +123,7 @@ def test_grayscale_fallback_roundtrip() -> None:
         stego_path, meta = embed(cover_path, secret_path, key="gray-key", b=2)
         try:
             assert meta["secret_shape"] == [32, 32, 1]
-            recovered_path = decode(stego_path, key="gray-key", b=2, meta=meta)
+            recovered_path = decode(stego_path, key="gray-key", meta=meta)
             try:
                 recovered_frames, recovered_fps = extract_frame_stack(recovered_path)
                 secret_stack = np.stack(secret_frames, axis=0)

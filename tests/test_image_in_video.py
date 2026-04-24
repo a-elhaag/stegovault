@@ -78,7 +78,7 @@ def test_decode_recovers_image() -> None:
     try:
         stego_path, meta = embed(cover_path, secret_path, key="decode-key", b=4)
         try:
-            recovered_path = decode(stego_path, key="decode-key", b=4, meta=meta)
+            recovered_path = decode(stego_path, key="decode-key", meta=meta)
             try:
                 original = cv2.imread(secret_path, cv2.IMREAD_COLOR)
                 recovered = cv2.imread(recovered_path, cv2.IMREAD_COLOR)

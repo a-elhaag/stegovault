@@ -143,8 +143,9 @@ def embed(cover_path: str, secret_path: str, key: str, b: int) -> tuple[str, dic
     return stego_path, meta
 
 
-def decode(stego_path: str, key: str, b: int, meta: dict) -> str:
+def decode(stego_path: str, key: str, meta: dict) -> str:
     """Inverse pipeline. Returns path to recovered PNG."""
+    b = int(meta["b"])
     for field in ("secret_len", "secret_shape", "secret_dtype", "frame_count"):
         if field not in meta:
             raise ValueError(f"missing required meta field: {field}")

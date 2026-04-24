@@ -41,7 +41,7 @@ def _embed_dispatch(
     return dispatch[mode](cover_path, secret_path, key, b)
 
 
-def _decode_dispatch(mode: str, stego_path: str, key: str, b: int, meta: dict) -> str:
+def _decode_dispatch(mode: str, stego_path: str, key: str, meta: dict) -> str:
     """Dispatch decode call to the requested mode implementation."""
     dispatch = {
         "image_in_image": image_in_image.decode,
@@ -50,7 +50,7 @@ def _decode_dispatch(mode: str, stego_path: str, key: str, b: int, meta: dict) -
     }
     if mode not in dispatch:
         raise ValueError(f"unsupported mode: {mode}")
-    return dispatch[mode](stego_path, key, b, meta)
+    return dispatch[mode](stego_path, key, meta)
 
 
 def file_hash(file_bytes: bytes) -> str:
@@ -140,7 +140,6 @@ def cached_decode(
     mode: str,
     stego_bytes: bytes,
     key: str,
-    b: int,
     meta: dict,
     stego_name: str | None = None,
 ) -> str:
@@ -155,6 +154,6 @@ def cached_decode(
         stego_tmp.write(stego_bytes)
         stego_path = stego_tmp.name
     try:
-        return _decode_dispatch(mode, stego_path, key, b, meta)
+        return _decode_dispatch(mode, stego_path, key, meta)
     finally:
         os.unlink(stego_path)

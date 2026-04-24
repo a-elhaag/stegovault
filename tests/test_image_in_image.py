@@ -89,7 +89,7 @@ def test_decode_recovers_secret() -> None:
         stego_path, meta = embed(cover_path, secret_path, key, b)
         
         # Decode
-        recovered_path = decode(stego_path, key, b, meta)
+        recovered_path = decode(stego_path, key, meta)
         
         # Load recovered secret and verify
         recovered_secret = cv2.imread(recovered_path)
@@ -122,7 +122,7 @@ def test_wrong_key_does_not_recover() -> None:
         
         # Decode with wrong key should fail because garbage bytes won't be valid PNG
         with pytest.raises(ValueError):
-            decode(stego_path, wrong_key, b, meta)
+            decode(stego_path, wrong_key, meta)
 
 
 def test_embed_respects_b_value() -> None:
@@ -141,7 +141,7 @@ def test_embed_respects_b_value() -> None:
             assert Path(stego_path).exists()
             
             # Verify we can decode it
-            recovered_path = decode(stego_path, "testkey", b, meta)
+            recovered_path = decode(stego_path, "testkey", meta)
             assert Path(recovered_path).exists()
 
 
