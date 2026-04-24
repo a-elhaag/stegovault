@@ -9,8 +9,8 @@ A steganography tool that hides images and videos inside other images or videos 
 | Mode | Cover | Secret |
 |------|-------|--------|
 | Image → Image | PNG | PNG |
-| Image → Video | MP4 (lossless) | PNG |
-| Video → Video | MP4 (lossless) | MP4 |
+| Image → Video | MP4/MKV (lossless) | PNG |
+| Video → Video | MP4/MKV (lossless) | MP4/MKV |
 
 ---
 
@@ -46,9 +46,9 @@ stegovault/
 │
 ├── modes/
 │   ├── __init__.py
-│   ├── image_in_image.py # embed(cover, secret, key, b) / decode(stego, key, b, secret_shape)
-│   ├── image_in_video.py # embed(cover, secret, key, b) / decode(stego, key, b, secret_size)
-│   └── video_in_video.py # embed(cover, secret, key, b) / decode(stego, key, b, secret_meta)
+│   ├── image_in_image.py # embed(cover, secret, key, b) / decode(stego, key, meta)
+│   ├── image_in_video.py # embed(cover, secret, key, b) / decode(stego, key, meta)
+│   └── video_in_video.py # embed(cover, secret, key, b) / decode(stego, key, meta)
 │
 ├── ui/
 │   ├── __init__.py
@@ -59,8 +59,7 @@ stegovault/
 │   └── demo.py           # key experiment / chi-square / PSNR / bit depth explorer
 │
 ├── app.py                # Streamlit entry point, three mode tabs
-├── requirements.txt
-└── AGENTS.md             # AI agent instructions
+└── requirements.txt
 ```
 
 ---
@@ -75,7 +74,7 @@ touch stegovault/engine/{__init__.py,spread.py,crypto.py,lsb.py,capacity.py} && 
 touch stegovault/preprocessing/{__init__.py,image.py,video.py} && \
 touch stegovault/modes/{__init__.py,image_in_image.py,image_in_video.py,video_in_video.py} && \
 touch stegovault/ui/{__init__.py,cache.py,capacity_meter.py,preview.py,download.py,demo.py} && \
-touch stegovault/app.py stegovault/requirements.txt stegovault/AGENTS.md stegovault/README.md
+touch stegovault/app.py stegovault/requirements.txt stegovault/README.md
 ```
 
 ### 2. Install dependencies
@@ -157,24 +156,23 @@ Embed raises `CapacityError` before starting if constraint is not satisfied.
 
 ## Video I/O pattern
 
-Use `imageio` with the `ffmpeg` plugin everywhere in `preprocessing/video.py`:
+`preprocessing/video.py` uses `imageio.v3` with `plugin="pyav"`. Codec is selected by output extension:
+
+| Output ext | Codec | Pixel format | Notes |
+|------------|-------|--------------|-------|
+| `.mkv` | `ffv1` | `bgr0` | Byte-exact lossless — recommended for steganography |
+| `.mp4` | `libx264` crf=0 | `yuv444p` | Theoretically lossless; not guaranteed for LSB payloads |
+
+**Warning:** H.264 treats LSB payloads (pseudorandom noise) as compression artifacts and may corrupt them. Use MKV/FFV1 for any mode that embeds in video pixels.
+
+Key functions in `preprocessing/video.py`:
 
 ```python
-import imageio.v3 as iio
-
-def extract_frames(video_path: str) -> tuple[list, float]:
-    frames = iio.imread(video_path, plugin="pyav")
-    fps = iio.immeta(video_path, plugin="pyav")["fps"]
-    return list(frames), fps
-
-def reconstruct_video(frames: list, output_path: str, fps: float) -> None:
-    iio.imwrite(
-        output_path,
-        frames,
-        plugin="pyav",
-        codec="libx264",
-        output_params=["-crf", "0", "-preset", "ultrafast", "-pix_fmt", "yuv444p"],
-    )
+extract_frames(video_path)          # → (list[ndarray], fps)
+extract_frame_stack(video_path)     # → (ndarray F×H×W×3, fps) — pre-allocated, lower peak memory
+extract_partial_frame_stack(video_path, num_frames)  # → (ndarray, fps) — early exit
+probe_video(video_path)             # → (first_frame, fps, frame_count) — O(1) memory
+reconstruct_video(frames, output_path, fps)  # codec auto-selected by extension
 ```
 
 ---
