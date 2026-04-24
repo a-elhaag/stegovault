@@ -31,17 +31,31 @@ def render(cover_shape: tuple, b: int, secret_size: int, frame_count: int = 1) -
     usage_ratio = needed / capacity_bytes
     fits = needed <= capacity_bytes
 
-    st.progress(float(min(1.0, usage_ratio)))
+    pct = min(100.0, usage_ratio * 100)
+    bar_color = "#62b6cb" if pct < 70 else ("#5fa8d3" if pct < 90 else "#1b4965")
+    status_label = "Fits" if fits else "Exceeds capacity"
 
-    left, right = st.columns(2)
-    with left:
-        st.caption(
-            f"Secret size: {needed:,} bytes | Capacity: {capacity_bytes:,} bytes"
-        )
-    with right:
-        st.caption(f"Usage: {usage_ratio * 100:.1f}%")
-
-    if fits:
-        st.success("Capacity status: secret fits in cover.")
-    else:
-        st.error("Capacity status: secret exceeds available cover capacity.")
+    st.markdown(
+        f"""
+        <div class="sv-capacity-wrap">
+            <div class="sv-capacity-header">
+                <span class="sv-capacity-title">Capacity</span>
+                <span class="sv-capacity-pct" style="color:{bar_color}">
+                    {pct:.1f}% &mdash; {status_label}
+                </span>
+            </div>
+            <div class="sv-capacity-track">
+                <div class="sv-capacity-fill" style="
+                    width:{pct}%;
+                    background:{bar_color};
+                    box-shadow:0 0 8px {bar_color}88;
+                    transition:width 0.4s ease;
+                "></div>
+            </div>
+            <div class="sv-capacity-info">
+                {needed:,} bytes needed &nbsp;&middot;&nbsp; {capacity_bytes:,} bytes available
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )

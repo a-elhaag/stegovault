@@ -27,52 +27,182 @@ _REQUIRED_META_KEYS = (
 
 
 def _inject_styles() -> None:
-    """Apply blue/white visual system for a clean app look."""
     st.markdown(
         """
         <style>
         :root {
-            --sv-blue-900: #0a3d7a;
-            --sv-blue-700: #1558a6;
-            --sv-blue-500: #2f7fdc;
-            --sv-blue-100: #eaf3ff;
-            --sv-white: #ffffff;
-            --sv-border: #c6dcfa;
+            --color-primary: #62b6cb;
+            --color-bg: #ffffff;
+            --color-text: #0f2a3a;
+            --color-secondary: #5fa8d3;
+            --color-light: #f0f9fb;
+            --color-lighter: #cae9ff;
         }
         html, body, [class*="css"] {
-            font-family: "IBM Plex Sans", "Trebuchet MS", sans-serif;
+            font-family: "IBM Plex Sans", "Inter", "Trebuchet MS", sans-serif;
         }
         .stApp {
-            background:
-                radial-gradient(900px 500px at 10% -10%, #d9ebff 0%, rgba(217, 235, 255, 0) 60%),
-                radial-gradient(700px 420px at 100% 0%, #edf5ff 0%, rgba(237, 245, 255, 0) 55%),
-                linear-gradient(180deg, #f8fbff 0%, #f3f8ff 100%);
+            background-color: var(--color-bg);
+            background-image: radial-gradient(rgba(98,182,203,0.02) 1px, transparent 1px);
+            background-size: 28px 28px;
         }
-        div[data-testid="stVerticalBlock"] div[data-testid="stHorizontalBlock"] {
-            gap: 0.8rem;
+        @keyframes sv-fade-in {
+            from { opacity: 0; transform: translateY(-10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .sv-hero {
+            text-align: center;
+            padding: 2rem 1rem 1.2rem;
+            animation: sv-fade-in 0.6s ease both;
+        }
+        .sv-hero-icon { font-size: 2.8rem; display: block; margin-bottom: 0.6rem; }
+        .sv-hero-title {
+            font-size: 2.8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.02em;
+            margin: 0 0 0.4rem 0;
+            line-height: 1.1;
+        }
+        .sv-hero-sub {
+            color: var(--color-text);
+            font-size: 0.95rem;
+            margin: 0;
+            letter-spacing: 0.03em;
         }
         .sv-card {
-            border: 1px solid var(--sv-border);
-            background: var(--sv-white);
-            border-radius: 12px;
-            padding: 14px 16px;
-            margin-bottom: 12px;
-            box-shadow: 0 6px 20px rgba(16, 67, 137, 0.08);
+            background: var(--color-lighter);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(98,182,203,0.15);
+            border-radius: 16px;
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8);
         }
         .sv-card h3 {
-            color: var(--sv-blue-900);
-            margin: 0 0 6px 0;
+            color: var(--color-text);
+            margin: 0 0 4px 0;
             font-size: 1.05rem;
             letter-spacing: 0.01em;
         }
-        .sv-note {
-            color: #2b5c95;
-            font-size: 0.92rem;
-            margin-top: 2px;
+        .sv-note { color: var(--color-text); font-size: 0.88rem; margin-top: 2px; opacity: 0.7; }
+        .sv-steps {
+            display: flex;
+            gap: 1.4rem;
+            margin: 0.8rem 0 1.2rem 0;
+            align-items: center;
+            flex-wrap: wrap;
         }
-        div[data-testid="stTabs"] button {
+        .sv-step { display: flex; align-items: center; gap: 0.4rem; color: var(--color-text); font-size: 0.82rem; opacity: 0.7; }
+        .sv-step-num {
+            width: 22px; height: 22px; border-radius: 50%;
+            background: rgba(98,182,203,0.1);
+            border: 1px solid rgba(98,182,203,0.2);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.72rem; font-weight: 700; color: var(--color-secondary); flex-shrink: 0;
+        }
+        .sv-step.active { color: var(--color-text); font-weight: 600; opacity: 1; }
+        .sv-step.active .sv-step-num {
+            background: var(--color-primary); border-color: var(--color-primary); color: #fff;
+            box-shadow: 0 0 10px rgba(98,182,203,0.4);
+        }
+        .sv-step.done { color: var(--color-secondary); opacity: 1; }
+        .sv-step.done .sv-step-num { background: var(--color-secondary); border-color: var(--color-secondary); color: #fff; }
+        .sv-capacity-wrap { margin: 0.8rem 0; }
+        .sv-capacity-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 0.4rem;
+        }
+        .sv-capacity-title { color: var(--color-text); font-size: 0.83rem; opacity: 0.7; }
+        .sv-capacity-pct { font-size: 0.83rem; font-weight: 600; color: var(--color-text); }
+        .sv-capacity-track {
+            height: 8px; background: rgba(98,182,203,0.08); border-radius: 4px;
+            overflow: hidden; border: 1px solid rgba(98,182,203,0.12);
+        }
+        .sv-capacity-fill { height: 100%; border-radius: 4px; background: var(--color-primary); }
+        .sv-capacity-info { color: var(--color-text); font-size: 0.77rem; margin-top: 0.3rem; opacity: 0.7; }
+        div[data-testid="stTabs"] button[data-baseweb="tab"] {
             font-weight: 600;
+            color: var(--color-text);
+            border-radius: 8px;
+            padding: 6px 16px;
+            transition: all 0.2s;
+            opacity: 0.7;
         }
+        div[data-testid="stTabs"] button[data-baseweb="tab"][aria-selected="true"] {
+            background: rgba(98,182,203,0.12);
+            color: var(--color-primary);
+            border-bottom: 2px solid var(--color-primary);
+            opacity: 1;
+        }
+        div[data-testid="stTabs"] button[data-baseweb="tab"]:hover {
+            background: rgba(98,182,203,0.08);
+            color: var(--color-secondary);
+            opacity: 1;
+        }
+        .stButton > button {
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+            color: #fff !important;
+            border: none !important;
+            border-radius: 10px !important;
+            font-weight: 600 !important;
+            transition: all 0.2s ease !important;
+            box-shadow: 0 4px 14px rgba(98,182,203,0.25) !important;
+        }
+        .stButton > button:hover:not(:disabled) {
+            box-shadow: 0 0 26px rgba(98,182,203,0.45) !important;
+            transform: translateY(-1px);
+        }
+        .stButton > button:active:not(:disabled) {
+            transform: translateY(0) !important;
+            box-shadow: 0 2px 8px rgba(98,182,203,0.3) !important;
+        }
+        .stButton > button:disabled {
+            background: rgba(98,182,203,0.1) !important;
+            color: var(--color-text) !important;
+            box-shadow: none !important;
+        }
+        .stDownloadButton > button {
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%) !important;
+            color: #fff !important;
+            border: none !important;
+            border-radius: 10px !important;
+            font-weight: 600 !important;
+            box-shadow: 0 4px 14px rgba(98,182,203,0.25) !important;
+            transition: all 0.2s ease !important;
+        }
+        .stDownloadButton > button:hover {
+            box-shadow: 0 0 24px rgba(98,182,203,0.45) !important;
+            transform: translateY(-1px);
+        }
+        [data-testid="stFileUploaderDropzone"] {
+            background: var(--color-lighter) !important;
+            border: 1px dashed rgba(98,182,203,0.32) !important;
+            border-radius: 12px !important;
+            transition: border-color 0.2s;
+        }
+        [data-testid="stFileUploaderDropzone"]:hover {
+            border-color: var(--color-primary) !important;
+        }
+        .stTextInput input {
+            background: #fff !important;
+            border: 1px solid rgba(98,182,203,0.25) !important;
+            border-radius: 8px !important;
+            color: var(--color-text) !important;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .stTextInput input:focus {
+            border-color: var(--color-primary) !important;
+            box-shadow: 0 0 0 3px rgba(98,182,203,0.12) !important;
+        }
+        [data-testid="stDivider"] { border-color: rgba(98,182,203,0.12) !important; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--color-primary); border-radius: 2px; }
         </style>
         """,
         unsafe_allow_html=True,
@@ -98,14 +228,39 @@ def _parse_meta_json(meta_bytes: bytes) -> dict:
     return parsed
 
 
-def _render_section(title: str, subtitle: str) -> None:
+def _render_section(title: str, subtitle: str, section_type: str = "embed") -> None:
+    accent = (
+        "var(--color-primary)" if section_type == "embed" else "var(--color-secondary)"
+    )
     st.markdown(
         (
-            '<div class="sv-card">'
+            f'<div class="sv-card" style="border-left:3px solid {accent}">'
             f"<h3>{title}</h3>"
             f'<div class="sv-note">{subtitle}</div>'
             "</div>"
         ),
+        unsafe_allow_html=True,
+    )
+
+
+def _render_steps(active: int) -> None:
+    labels = ["Upload", "Configure", "Embed", "Download"]
+    parts = []
+    for i, label in enumerate(labels, 1):
+        if i < active:
+            cls, badge = "sv-step done", "●"
+        elif i == active:
+            cls, badge = "sv-step active", str(i)
+        else:
+            cls, badge = "sv-step", str(i)
+        parts.append(
+            f'<div class="{cls}">'
+            f'<span class="sv-step-num">{badge}</span>'
+            f'<span class="sv-step-label">&nbsp;{label}</span>'
+            f"</div>"
+        )
+    st.markdown(
+        '<div class="sv-steps">' + "".join(parts) + "</div>",
         unsafe_allow_html=True,
     )
 
@@ -121,7 +276,9 @@ def _tab_image_in_image() -> None:
     _render_section(
         "Image in Image",
         "Hide a PNG secret inside a PNG cover using spread LSB and XOR.",
+        section_type="embed",
     )
+    _render_steps(1)
 
     up_left, up_right = st.columns(2)
     with up_left:
@@ -228,6 +385,7 @@ def _tab_image_in_image() -> None:
     _render_section(
         "Decode",
         "Provide the stego PNG and matching sidecar metadata to recover the secret.",
+        section_type="decode",
     )
 
     dec_left, dec_right = st.columns(2)
@@ -284,7 +442,9 @@ def _tab_image_in_video() -> None:
     _render_section(
         "Image in Video",
         "Hide a PNG secret across video cover frames with frame-0 live preview.",
+        section_type="embed",
     )
+    _render_steps(1)
     st.caption("Video upload limit: up to 1 GB per file.")
 
     up_left, up_right = st.columns(2)
@@ -391,6 +551,7 @@ def _tab_image_in_video() -> None:
     _render_section(
         "Decode",
         "Provide the stego video and matching sidecar metadata to recover the secret image.",
+        section_type="decode",
     )
 
     dec_left, dec_right = st.columns(2)
@@ -449,7 +610,9 @@ def _tab_video_in_video() -> None:
     _render_section(
         "Video in Video",
         "Hide a video secret inside a video cover using lossless LSB embedding and XOR.",
+        section_type="embed",
     )
+    _render_steps(1)
     st.caption("Video-in-video upload limit: up to 1 GB per file.")
 
     up_left, up_right = st.columns(2)
@@ -591,6 +754,7 @@ def _tab_video_in_video() -> None:
     _render_section(
         "Decode",
         "Provide the stego video and matching sidecar metadata to recover the secret video.",
+        section_type="decode",
     )
 
     dec_left, dec_right = st.columns(2)
@@ -654,11 +818,18 @@ def main() -> None:
     )
     _inject_styles()
 
-    st.title("StegoVault")
-    st.caption("Secure steganography workflows for image and video covers")
+    st.markdown(
+        """
+        <div class="sv-hero">
+            <h1 class="sv-hero-title">StegoVault</h1>
+            <p class="sv-hero-sub">Secure steganography &nbsp;·&nbsp; Spread LSB &nbsp;·&nbsp; XOR encryption</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     tab_i2i, tab_i2v, tab_v2v = st.tabs(
-        ["Image to Image", "Image to Video", "Video to Video"]
+        ["Image → Image", "Image → Video", "Video → Video"]
     )
 
     with tab_i2i:
