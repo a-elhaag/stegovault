@@ -808,6 +808,39 @@ def _tab_video_in_video() -> None:
         )
 
 
+def _tab_contributors() -> None:
+    """Render contributors tab with team member information."""
+    st.markdown(
+        """
+        <div class="sv-card" style="text-align: center; margin-bottom: 2rem;">
+            <h2 style="color: var(--color-primary); font-size: 1.8rem; margin: 0 0 0.5rem 0;">Team</h2>
+            <p style="color: var(--color-text); opacity: 0.8; margin: 0;">Meet the developers behind StegoVault</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    contributors = [
+        {"name": "Sohaila Tamer", "id": "192200251"},
+        {"name": "Youmna Hesham", "id": "192200153"},
+        {"name": "Youstina Adel", "id": "192200148"},
+        {"name": "Anas Abuelhaag", "id": "192200122"},
+    ]
+
+    cols = st.columns(len(contributors))
+    for col, contributor in zip(cols, contributors):
+        with col:
+            st.markdown(
+                f"""
+                <div class="sv-card" style="text-align: center; background: rgba(98,182,203,0.08);">
+                    <h3 style="color: var(--color-primary); margin: 0 0 0.3rem 0; font-size: 1.05rem;">{contributor['name']}</h3>
+                    <p style="color: var(--color-text); opacity: 0.6; margin: 0; font-size: 0.85rem; font-family: monospace;">{contributor['id']}</p>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+
 def main() -> None:
     """Configure page, render four-tab layout."""
     st.set_page_config(
@@ -828,8 +861,8 @@ def main() -> None:
         unsafe_allow_html=True,
     )
 
-    tab_i2i, tab_i2v, tab_v2v = st.tabs(
-        ["Image → Image", "Image → Video", "Video → Video"]
+    tab_i2i, tab_i2v, tab_v2v, tab_contrib = st.tabs(
+        ["Image → Image", "Image → Video", "Video → Video", "Contributors"]
     )
 
     with tab_i2i:
@@ -838,6 +871,8 @@ def main() -> None:
         _tab_image_in_video()
     with tab_v2v:
         _tab_video_in_video()
+    with tab_contrib:
+        _tab_contributors()
 
 
 if __name__ == "__main__":

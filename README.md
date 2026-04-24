@@ -4,15 +4,6 @@ A steganography tool that hides images and videos inside other images or videos 
 
 ---
 
-## Modes
-
-| Mode | Cover | Secret |
-|------|-------|--------|
-| Image → Image | PNG | PNG |
-| Image → Video | MP4/MKV (lossless) | PNG |
-| Video → Video | MP4/MKV (lossless) | MP4/MKV |
-
----
 
 ## Algorithm
 
