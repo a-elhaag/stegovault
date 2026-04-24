@@ -102,7 +102,7 @@ def embed_video(cover_path: str, secret_path: str, key: str, b: int) -> tuple[st
   secret_len = color_secret_len
 
   if color_secret_len <= capacity_bytes:
-    grayscale = False
+    pass
   elif gray_secret_len <= capacity_bytes:
     grayscale = True
     secret_shape = [cover_shape[0], cover_shape[1], 1]
@@ -140,6 +140,7 @@ def embed_video(cover_path: str, secret_path: str, key: str, b: int) -> tuple[st
     return stego_path, meta
 
   seed = spread.key_to_seed(key)
+  stream_rng = np.random.default_rng(seed)
   frame_capacity = _frame_capacity_bytes(cover_shape, b)
   secret_iter = _stream_resized_secret_frames(secret_path, cover_shape, grayscale)
   secret_buffer = bytearray()
@@ -172,7 +173,7 @@ def embed_video(cover_path: str, secret_path: str, key: str, b: int) -> tuple[st
       chunk = bytes(secret_buffer[:take])
       del secret_buffer[:take]
       emitted_secret_bytes += take
-      encrypted_chunk = crypto.xor_bytes(chunk, seed)
+      encrypted_chunk = crypto.xor_bytes_stream(chunk, stream_rng)
       yield lsb.embed(cover_frame, encrypted_chunk, b, seed + frame_index)
 
   with tempfile.NamedTemporaryFile(suffix=".mkv", delete=False) as tmp:
@@ -233,6 +234,7 @@ def extract_video(stego_path: str, key: str, b: int, meta: dict) -> str:
     return out_path
 
   seed = spread.key_to_seed(key)
+  stream_rng = np.random.default_rng(seed)
   secret_frame_bytes = int(np.prod(secret_shape))
   decoded_buffer = bytearray()
   yielded_frame_count = 0
@@ -250,7 +252,7 @@ def extract_video(stego_path: str, key: str, b: int, meta: dict) -> str:
         continue
 
       encrypted_chunk = lsb.decode(stego_frame, b, seed + frame_index, take)
-      decoded_buffer.extend(crypto.xor_bytes(encrypted_chunk, seed))
+      decoded_buffer.extend(crypto.xor_bytes_stream(encrypted_chunk, stream_rng))
       emitted_secret_bytes += take
 
       while len(decoded_buffer) >= secret_frame_bytes:

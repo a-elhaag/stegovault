@@ -20,6 +20,16 @@ from __future__ import annotations
 import numpy as np
 
 
+def xor_bytes_stream(data: bytes, rng: np.random.Generator) -> bytes:
+    """XOR data with next bytes from an existing RNG, advancing it in place.
+
+    Use instead of xor_bytes when encrypting multiple chunks sequentially —
+    avoids keystream reuse that occurs when each chunk re-seeds the same RNG.
+    """
+    keystream = np.frombuffer(rng.bytes(len(data)), dtype=np.uint8)
+    return (np.frombuffer(data, dtype=np.uint8) ^ keystream).tobytes()
+
+
 def xor_bytes(data: bytes, seed: int) -> bytes:
     """XOR data with keystream from np.random.default_rng(seed).
 
