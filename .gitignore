@@ -45,7 +45,6 @@ Thumbs.db
 
 # Runtime and local tooling
 .remember/
-.claude/
 
 # Logs and temp files
 *.log
