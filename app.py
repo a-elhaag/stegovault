@@ -1,4 +1,4 @@
-"""Streamlit entry point. Four tabs: Image→Image, Image→Video, Video→Video, Demo."""
+"""Streamlit entry point. Three tabs: Image→Image, Image→Video, Video→Video."""
 
 from __future__ import annotations
 
@@ -337,7 +337,9 @@ def _tab_image_in_video() -> None:
             secret_size=secret_size,
             frame_count=frame_count,
         )
-        fits = secret_size <= _capacity_bytes(first_frame.shape, b, frame_count=frame_count)
+        fits = secret_size <= _capacity_bytes(
+            first_frame.shape, b, frame_count=frame_count
+        )
 
         preview.render_frame_zero(first_frame, secret_img, key, b)
 
@@ -509,12 +511,23 @@ def _tab_video_in_video() -> None:
             interpolation=cv2.INTER_AREA,
         )
 
-        color_secret_size = int(secret_frame_count * cover_first_frame.shape[0] * cover_first_frame.shape[1] * cover_first_frame.shape[2])
-        gray_secret_size = int(secret_frame_count * cover_first_frame.shape[0] * cover_first_frame.shape[1])
+        color_secret_size = int(
+            secret_frame_count
+            * cover_first_frame.shape[0]
+            * cover_first_frame.shape[1]
+            * cover_first_frame.shape[2]
+        )
+        gray_secret_size = int(
+            secret_frame_count * cover_first_frame.shape[0] * cover_first_frame.shape[1]
+        )
         chosen_size = color_secret_size
-        if color_secret_size <= _capacity_bytes(cover_first_frame.shape, b, frame_count=cover_frame_count):
+        if color_secret_size <= _capacity_bytes(
+            cover_first_frame.shape, b, frame_count=cover_frame_count
+        ):
             fits = True
-        elif gray_secret_size <= _capacity_bytes(cover_first_frame.shape, b, frame_count=cover_frame_count):
+        elif gray_secret_size <= _capacity_bytes(
+            cover_first_frame.shape, b, frame_count=cover_frame_count
+        ):
             fits = True
             grayscale_fallback = True
             chosen_size = gray_secret_size
@@ -631,15 +644,6 @@ def _tab_video_in_video() -> None:
         )
 
 
-def _tab_demo() -> None:
-    """Demo panel tab: calls ui.demo render functions."""
-    _render_section(
-        "Demo Panel",
-        "Interactive analytics widgets are temporarily disabled until demo components are implemented.",
-    )
-    st.info("Demo widgets are not enabled yet. Core embed/decode workflows are available in the first two tabs.")
-
-
 def main() -> None:
     """Configure page, render four-tab layout."""
     st.set_page_config(
@@ -653,8 +657,8 @@ def main() -> None:
     st.title("StegoVault")
     st.caption("Secure steganography workflows for image and video covers")
 
-    tab_i2i, tab_i2v, tab_v2v, tab_demo = st.tabs(
-        ["Image to Image", "Image to Video", "Video to Video", "Demo"]
+    tab_i2i, tab_i2v, tab_v2v = st.tabs(
+        ["Image to Image", "Image to Video", "Video to Video"]
     )
 
     with tab_i2i:
@@ -663,8 +667,6 @@ def main() -> None:
         _tab_image_in_video()
     with tab_v2v:
         _tab_video_in_video()
-    with tab_demo:
-        _tab_demo()
 
 
 if __name__ == "__main__":
